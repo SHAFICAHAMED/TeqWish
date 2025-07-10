@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from teq_wish_app.models import *
 from datetime import date
-from django.core.mail import send_mail, EmailMessage
+from django.core.mail import EmailMessage
 from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
@@ -15,6 +15,7 @@ import json
 import io
 import zipfile
 import base64
+
 
 class Student(APIView):
     def post(self, request):
@@ -58,15 +59,15 @@ class student_update(APIView):
     def get(self, request, *args, **kwargs):
         regNo = kwargs.get("regNo")
         data = list(table.find({"regNo": regNo}, {"_id": 0}))
-        return Response(data[0])
+        return Response(data[0] if data else {})
+
 
 @csrf_exempt
 def send_birthday_emails(request):
-    try:
-        if request.method != 'POST':
-            return JsonResponse({'error': 'Invalid method'}, status=405)
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Only POST method allowed'}, status=405)
 
-        # Decode the body
+    try:
         body_unicode = request.body.decode('utf-8')
         if not body_unicode:
             return JsonResponse({'error': 'Empty request body'}, status=400)
@@ -78,13 +79,19 @@ def send_birthday_emails(request):
             return JsonResponse({'error': 'No students provided'}, status=400)
 
         for student in students:
+            name = student.get('name', 'Student')
+            email_address = student.get('email')
+
+            if not email_address:
+                continue  # Skip if no email
+
             subject = "🎂 Happy Birthday from T4TEQ!"
             from_email = settings.DEFAULT_FROM_EMAIL
-            to_email = student['email']
+            to_email = email_address
 
             html_content = f"""
                 <div style="font-family:Arial; padding:20px; border:1px solid #ddd;">
-                    <h2 style="color:#007BFF;">Happy Birthday, {student['name']}!</h2>
+                    <h2 style="color:#007BFF;">Happy Birthday, {name}!</h2>
                     <p>Wishing you all the success, happiness, and health on your special day! 🎉</p>
                     <img src="cid:poster" style="width:100%; max-width:400px; margin-top:20px;" />
                     <p style="margin-top:20px;">- T4TEQ Team</p>
@@ -94,31 +101,37 @@ def send_birthday_emails(request):
             email = EmailMessage(subject, html_content, from_email, [to_email])
             email.content_subtype = 'html'
 
-            # Absolute path for static image
+            # Attach inline birthday image
             image_path = os.path.join(settings.BASE_DIR, 'static', 'assests', 'image.jpeg')
-            with open(image_path, 'rb') as img:
-                mime_img = MIMEImage(img.read())
-                mime_img.add_header('Content-ID', '<poster>')
-                mime_img.add_header('Content-Disposition', 'inline', filename='image.jpeg')
-                email.attach(mime_img)
+            if os.path.exists(image_path):
+                with open(image_path, 'rb') as img:
+                    mime_img = MIMEImage(img.read())
+                    mime_img.add_header('Content-ID', '<poster>')
+                    mime_img.add_header('Content-Disposition', 'inline', filename='image.jpeg')
+                    email.attach(mime_img)
 
             email.send()
 
-        return JsonResponse({'message': 'Birthday wishes sent'}, status=200)
+        return JsonResponse({'message': 'Birthday wishes sent successfully'}, status=200)
 
-    except json.JSONDecodeError as e:
-        print("JSON decode error:", e)
+    except json.JSONDecodeError:
         return JsonResponse({'error': 'Invalid JSON format'}, status=400)
-
     except Exception as e:
-        print("Error sending birthday wishes:", e)
+        print("Email error:", str(e))
         return JsonResponse({'error': 'Failed to send birthday emails'}, status=500)
 
 
 @csrf_exempt
 def download_students_zip(request):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Only POST method allowed'}, status=405)
+
     try:
-        students = json.loads(request.body.decode('utf-8'))
+        body_unicode = request.body.decode('utf-8')
+        if not body_unicode:
+            return JsonResponse({'error': 'Empty request body'}, status=400)
+
+        students = json.loads(body_unicode)
 
         zip_buffer = io.BytesIO()
         with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
@@ -130,8 +143,9 @@ def download_students_zip(request):
                 if image_data.startswith('data:image/'):
                     header, encoded = image_data.split(',', 1)
                     image_bytes = base64.b64decode(encoded)
-                    ext = header.split('/')[1].split(';')[0]  # jpeg, png, etc.
-                    zip_file.writestr(f"{name}_{reg_no}_image.{ext}", image_bytes)
+                    ext = header.split('/')[1].split(';')[0]  # jpeg/png/etc.
+                    filename = f"{name}_{reg_no}_image.{ext}"
+                    zip_file.writestr(filename, image_bytes)
 
         zip_buffer.seek(0)
         response = HttpResponse(zip_buffer, content_type='application/zip')
@@ -139,5 +153,5 @@ def download_students_zip(request):
         return response
 
     except Exception as e:
-        print("Error creating ZIP:", e)
-        return HttpResponse('Failed to generate zip', status=500)
+        print("Download ZIP error:", str(e))
+        return JsonResponse({'error': 'Failed to generate zip'}, status=500)
