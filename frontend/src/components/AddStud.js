@@ -68,7 +68,7 @@ export default function AddStud() {
     }
 
     try {
-      const res = await axios.post('http://127.0.0.1:8000/post/', formData);
+      const res = await axios.post('https://teqwish.onrender.com/post/', formData);
       if (res.status === 200) {
         setSuccess('Student added successfully!');
         alert('Student added successfully!');
