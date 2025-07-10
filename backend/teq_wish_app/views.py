@@ -3,19 +3,18 @@ from datetime import datetime
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from teq_wish_app.models import *
+from datetime import date
 from django.core.mail import send_mail, EmailMessage
-from django.conf import settings
-from django.http import JsonResponse, HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
+from django.conf import settings
 from email.mime.image import MIMEImage
+import os
 import json
 import io
 import zipfile
 import base64
-import os
-
-from teq_wish_app.models import table
-
 
 class Student(APIView):
     def post(self, request):
@@ -36,14 +35,17 @@ class Student(APIView):
 
     def put(self, request, *args, **kwargs):
         regNo = kwargs.get("regNo")
-        table.update_one({'regNo': regNo}, {
-            "$set": {
-                "name": request.data.get("name"),
-                "email": request.data.get("email"),
-                "dob": request.data.get("dob"),
-                "image": request.data.get("image")
+        table.update_one(
+            {'regNo': regNo},
+            {
+                "$set": {
+                    "name": request.data.get("name"),
+                    "email": request.data.get("email"),
+                    "dob": request.data.get("dob"),
+                    "image": request.data.get("image")
+                }
             }
-        })
+        )
         return Response("updated successfully")
 
     def delete(self, request, *args, **kwargs):
@@ -56,14 +58,22 @@ class student_update(APIView):
     def get(self, request, *args, **kwargs):
         regNo = kwargs.get("regNo")
         data = list(table.find({"regNo": regNo}, {"_id": 0}))
-        return Response(data[0] if data else {})
-
+        return Response(data[0])
 
 @csrf_exempt
 def send_birthday_emails(request):
     try:
-        body = json.loads(request.body)
+        if request.method != 'POST':
+            return JsonResponse({'error': 'Invalid method'}, status=405)
+
+        # Decode the body
+        body_unicode = request.body.decode('utf-8')
+        if not body_unicode:
+            return JsonResponse({'error': 'Empty request body'}, status=400)
+
+        body = json.loads(body_unicode)
         students = body.get('students', [])
+
         if not students:
             return JsonResponse({'error': 'No students provided'}, status=400)
 
@@ -84,7 +94,7 @@ def send_birthday_emails(request):
             email = EmailMessage(subject, html_content, from_email, [to_email])
             email.content_subtype = 'html'
 
-            # Use relative static image path
+            # Absolute path for static image
             image_path = os.path.join(settings.BASE_DIR, 'static', 'assests', 'image.jpeg')
             with open(image_path, 'rb') as img:
                 mime_img = MIMEImage(img.read())
@@ -96,15 +106,20 @@ def send_birthday_emails(request):
 
         return JsonResponse({'message': 'Birthday wishes sent'}, status=200)
 
+    except json.JSONDecodeError as e:
+        print("JSON decode error:", e)
+        return JsonResponse({'error': 'Invalid JSON format'}, status=400)
+
     except Exception as e:
-        print(f"❌ Error sending birthday wishes: {e}")
-        return JsonResponse({'error': str(e)}, status=500)
+        print("Error sending birthday wishes:", e)
+        return JsonResponse({'error': 'Failed to send birthday emails'}, status=500)
 
 
 @csrf_exempt
 def download_students_zip(request):
     try:
-        students = json.loads(request.body)
+        students = json.loads(request.body.decode('utf-8'))
+
         zip_buffer = io.BytesIO()
         with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
             for student in students:
@@ -115,7 +130,7 @@ def download_students_zip(request):
                 if image_data.startswith('data:image/'):
                     header, encoded = image_data.split(',', 1)
                     image_bytes = base64.b64decode(encoded)
-                    ext = header.split('/')[1].split(';')[0]
+                    ext = header.split('/')[1].split(';')[0]  # jpeg, png, etc.
                     zip_file.writestr(f"{name}_{reg_no}_image.{ext}", image_bytes)
 
         zip_buffer.seek(0)
@@ -124,5 +139,5 @@ def download_students_zip(request):
         return response
 
     except Exception as e:
-        print("❌ Error creating ZIP:", e)
+        print("Error creating ZIP:", e)
         return HttpResponse('Failed to generate zip', status=500)
