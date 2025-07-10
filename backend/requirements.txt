@@ -1,5 +1,5 @@
-django
-djangorestframework
-pymongo
-django-cors-headers
-dnspython
+Django>=4.2
+djangorestframework>=3.15
+pymongo>=4.5.0
+django-cors-headers>=4.0.0
+dnspython>=2.3.0
