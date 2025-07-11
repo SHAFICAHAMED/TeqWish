@@ -190,7 +190,7 @@ class student_update(APIView):
 
 
 ###third version
-from bson.regex import Regex  # ⬅️ Add this import at the top if not already
+from bson.regex import Regex  # ✅ Required for MongoDB regex matching
 
 @csrf_exempt
 def send_birthday_emails(request):
@@ -200,13 +200,14 @@ def send_birthday_emails(request):
     try:
         body_unicode = request.body.decode('utf-8').strip()
 
-        # 🎯 Case 1: Auto mode — triggered by GitHub Actions (no body)
+        # 🎯 Auto Mode: Triggered by GitHub Actions / UptimeRobot (empty body)
         if not body_unicode:
             print("🌀 Auto mode triggered: No request body found.")
-            today_md = date.today().strftime("-%m-%d")  # e.g. "-07-11"
+            today_md = date.today().strftime("-%m-%d")  # Ex: "-07-11"
             students = list(table.find({"dob": Regex(f"{today_md}$")}, {"_id": 0}))
+            print("📦 Auto-mode found students:", students)
         else:
-            # 🎯 Case 2: Manual mode (Postman / Frontend)
+            # 🎯 Manual Mode: Postman / Frontend
             body = json.loads(body_unicode)
             students = body.get('students', [])
 
@@ -219,7 +220,7 @@ def send_birthday_emails(request):
             email_address = student.get('email')
 
             if not email_address:
-                continue  # Skip if email is missing
+                continue  # Skip if no email
 
             subject = "🎂 Happy Birthday from T4TEQ!"
             from_email = settings.DEFAULT_FROM_EMAIL
@@ -237,7 +238,7 @@ def send_birthday_emails(request):
             email = EmailMessage(subject, html_content, from_email, [to_email])
             email.content_subtype = 'html'
 
-            # 📎 Attach image
+            # 🎁 Attach image
             image_path = os.path.join(settings.BASE_DIR, 'static', 'assests', 'image.jpeg')
             if os.path.exists(image_path):
                 with open(image_path, 'rb') as img:
@@ -256,6 +257,7 @@ def send_birthday_emails(request):
     except Exception as e:
         print("💥 Email error:", str(e))
         return JsonResponse({'error': 'Failed to send birthday emails'}, status=500)
+
 
 
 @csrf_exempt
