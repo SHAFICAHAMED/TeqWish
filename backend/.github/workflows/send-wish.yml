@@ -2,7 +2,7 @@ name: Send Daily Wish
 
 on:
   schedule:
-    - cron: '30 18 * * *'     # Every minute (testing)
+    - cron: '* * * * *'     # Every minute (testing)
   workflow_dispatch:
 
 jobs:
@@ -13,7 +13,7 @@ jobs:
       - name: Wake up Render
         run: |
           echo "🌅 Waking up backend..."
-          curl -s https://birthday-wish-backend.onrender.com/
+          curl -s https://teqwish.onrender.com/
           echo "⏳ Waiting for backend to warm up..."
           sleep 15
 
