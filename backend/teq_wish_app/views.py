@@ -110,6 +110,8 @@ def send_birthday_emails(request):
                     mime_img.add_header('Content-Disposition', 'inline', filename='image.jpeg')
                     email.attach(mime_img)
 
+            print(f"✅ Email sent to: {email_address}")
+            print(f"Sending birthday email to: {email_address}")
             email.send()
 
         return JsonResponse({'message': 'Birthday wishes sent successfully'}, status=200)
