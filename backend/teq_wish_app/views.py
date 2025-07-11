@@ -190,7 +190,7 @@ class student_update(APIView):
 
 
 ###third version
-from bson.regex import Regex  # ✅ Required for MongoDB regex matching
+from bson.regex import Regex  # Required for Regex query
 
 @csrf_exempt
 def send_birthday_emails(request):
@@ -198,29 +198,32 @@ def send_birthday_emails(request):
         return JsonResponse({'error': 'Only POST method allowed'}, status=405)
 
     try:
+        print("🎯 send_birthday_emails endpoint HIT", flush=True)
+
         body_unicode = request.body.decode('utf-8').strip()
 
-        # 🎯 Auto Mode: Triggered by GitHub Actions / UptimeRobot (empty body)
+        # 🎯 Auto mode — GitHub or UptimeRobot
         if not body_unicode:
-            print("🌀 Auto mode triggered: No request body found.")
-            today_md = date.today().strftime("-%m-%d")  # Ex: "-07-11"
+            print("🌀 Auto mode triggered: No request body found.", flush=True)
+            today_md = date.today().strftime("-%m-%d")  # -MM-DD
             students = list(table.find({"dob": Regex(f"{today_md}$")}, {"_id": 0}))
-            print("📦 Auto-mode found students:", students)
+            print(f"📦 Auto-mode students: {students}", flush=True)
         else:
-            # 🎯 Manual Mode: Postman / Frontend
+            # 🎯 Manual mode
             body = json.loads(body_unicode)
             students = body.get('students', [])
+            print(f"🧪 Manual students: {students}", flush=True)
 
         if not students:
-            print("📭 No students found to wish today.")
+            print("📭 No students found to wish today.", flush=True)
             return JsonResponse({'message': 'No students to wish today'}, status=200)
 
         for student in students:
             name = student.get('name', 'Student')
             email_address = student.get('email')
-
             if not email_address:
-                continue  # Skip if no email
+                print("⚠️ Skipping student with no email.", flush=True)
+                continue
 
             subject = "🎂 Happy Birthday from T4TEQ!"
             from_email = settings.DEFAULT_FROM_EMAIL
@@ -247,15 +250,16 @@ def send_birthday_emails(request):
                     mime_img.add_header('Content-Disposition', 'inline', filename='image.jpeg')
                     email.attach(mime_img)
 
-            print(f"✅ Email sent to: {email_address}")
+            print(f"✅ Email sent to: {email_address}", flush=True)
             email.send()
 
         return JsonResponse({'message': 'Birthday wishes sent successfully'}, status=200)
 
     except json.JSONDecodeError:
+        print("❌ Invalid JSON format", flush=True)
         return JsonResponse({'error': 'Invalid JSON format'}, status=400)
     except Exception as e:
-        print("💥 Email error:", str(e))
+        print("💥 Email error:", str(e), flush=True)
         return JsonResponse({'error': 'Failed to send birthday emails'}, status=500)
 
 
