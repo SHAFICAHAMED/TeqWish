@@ -20,4 +20,4 @@ jobs:
       - name: Call Wish API
         run: |
           echo "📡 Sending wish..."
-          curl -v --retry 5 --retry-delay 10 --retry-all-errors -X POST https://birthday-wish-backend.onrender.com/api/sendWish
+          curl -v --retry 5 --retry-delay 10 --retry-all-errors -X POST https://teqwish.onrender.com/mail/
