@@ -63,102 +63,38 @@ class student_update(APIView):
         return Response(data[0] if data else {})
 
 
-# @csrf_exempt
-# def send_birthday_emails(request):
-#     if request.method != 'POST':
-#         return JsonResponse({'error': 'Only POST method allowed'}, status=405)
-
-#     try:
-#         body_unicode = request.body.decode('utf-8')
-#         if not body_unicode:
-#             return JsonResponse({'error': 'Empty request body'}, status=400)
-
-#         body = json.loads(body_unicode)
-#         students = body.get('students', [])
-
-#         if not students:
-#             return JsonResponse({'error': 'No students provided'}, status=400)
-
-#         for student in students:
-#             name = student.get('name', 'Student')
-#             email_address = student.get('email')
-
-#             if not email_address:
-#                 continue  # Skip if no email
-
-#             subject = "🎂 Happy Birthday from T4TEQ!"
-#             from_email = settings.DEFAULT_FROM_EMAIL
-#             to_email = email_address
-
-#             html_content = f"""
-#                 <div style="font-family:Arial; padding:20px; border:1px solid #ddd;">
-#                     <h2 style="color:#007BFF;">Happy Birthday, {name}!</h2>
-#                     <p>Wishing you all the success, happiness, and health on your special day! 🎉</p>
-#                     <img src="cid:poster" style="width:100%; max-width:400px; margin-top:20px;" />
-#                     <p style="margin-top:20px;">- T4TEQ Team</p>
-#                 </div>
-#             """
-
-#             email = EmailMessage(subject, html_content, from_email, [to_email])
-#             email.content_subtype = 'html'
-
-#             # Attach inline birthday image
-#             image_path = os.path.join(settings.BASE_DIR, 'static', 'assests', 'image.jpeg')
-#             if os.path.exists(image_path):
-#                 with open(image_path, 'rb') as img:
-#                     mime_img = MIMEImage(img.read())
-#                     mime_img.add_header('Content-ID', '<poster>')
-#                     mime_img.add_header('Content-Disposition', 'inline', filename='image.jpeg')
-#                     email.attach(mime_img)
-
-#             print(f"✅ Email sent to: {email_address}")
-#             print(f"Sending birthday email to: {email_address}")
-#             email.send()
-
-#         return JsonResponse({'message': 'Birthday wishes sent successfully'}, status=200)
-
-#     except json.JSONDecodeError:
-#         return JsonResponse({'error': 'Invalid JSON format'}, status=400)
-#     except Exception as e:
-#         print("Email error:", str(e))
-#         return JsonResponse({'error': 'Failed to send birthday emails'}, status=500)
-
 @csrf_exempt
 def send_birthday_emails(request):
     if request.method != 'POST':
         return JsonResponse({'error': 'Only POST method allowed'}, status=405)
 
     try:
-        from bson.regex import Regex
-        today = date.today()
-        month_day = today.strftime("-%m-%d")
+        body_unicode = request.body.decode('utf-8')
+        if not body_unicode:
+            return JsonResponse({'error': 'Empty request body'}, status=400)
 
-        print("🎯 Matching DOB ends with:", month_day)
-
-        # Match all DOBs like 'YYYY-MM-DD' ending in today
-        students = list(table.find({"dob": Regex(f"{month_day}$")}, {"_id": 0}))
-
-        print(f"🎉 {len(students)} students found for birthday")
+        body = json.loads(body_unicode)
+        students = body.get('students', [])
 
         if not students:
-            return JsonResponse({'message': 'No birthdays today'}, status=200)
+            return JsonResponse({'error': 'No students provided'}, status=400)
 
         for student in students:
             name = student.get('name', 'Student')
             email_address = student.get('email')
 
             if not email_address:
-                continue
+                continue  # Skip if no email
 
             subject = "🎂 Happy Birthday from T4TEQ!"
             from_email = settings.DEFAULT_FROM_EMAIL
             to_email = email_address
 
             html_content = f"""
-                <div style="font-family:Arial; padding:20px;">
+                <div style="font-family:Arial; padding:20px; border:1px solid #ddd;">
                     <h2 style="color:#007BFF;">Happy Birthday, {name}!</h2>
-                    <p>Wishing you lots of joy today! 🎉</p>
-                    <img src="cid:poster" style="max-width:400px;" />
+                    <p>Wishing you all the success, happiness, and health on your special day! 🎉</p>
+                    <img src="cid:poster" style="width:100%; max-width:400px; margin-top:20px;" />
                     <p style="margin-top:20px;">- T4TEQ Team</p>
                 </div>
             """
@@ -166,7 +102,7 @@ def send_birthday_emails(request):
             email = EmailMessage(subject, html_content, from_email, [to_email])
             email.content_subtype = 'html'
 
-            # Add image
+            # Attach inline birthday image
             image_path = os.path.join(settings.BASE_DIR, 'static', 'assests', 'image.jpeg')
             if os.path.exists(image_path):
                 with open(image_path, 'rb') as img:
@@ -176,13 +112,77 @@ def send_birthday_emails(request):
                     email.attach(mime_img)
 
             print(f"✅ Email sent to: {email_address}")
+            print(f"Sending birthday email to: {email_address}")
             email.send()
 
-        return JsonResponse({'message': 'Birthday emails sent'}, status=200)
+        return JsonResponse({'message': 'Birthday wishes sent successfully'}, status=200)
 
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON format'}, status=400)
     except Exception as e:
-        print("💥 Email send error:", str(e))
-        return JsonResponse({'error': 'Failed to send emails'}, status=500)
+        print("Email error:", str(e))
+        return JsonResponse({'error': 'Failed to send birthday emails'}, status=500)
+
+# @csrf_exempt
+# def send_birthday_emails(request):
+#     if request.method != 'POST':
+#         return JsonResponse({'error': 'Only POST method allowed'}, status=405)
+
+#     try:
+#         from bson.regex import Regex
+#         today = date.today()
+#         month_day = today.strftime("-%m-%d")
+
+#         print("🎯 Matching DOB ends with:", month_day)
+
+#         # Match all DOBs like 'YYYY-MM-DD' ending in today
+#         students = list(table.find({"dob": Regex(f"{month_day}$")}, {"_id": 0}))
+
+#         print(f"🎉 {len(students)} students found for birthday")
+
+#         if not students:
+#             return JsonResponse({'message': 'No birthdays today'}, status=200)
+
+#         for student in students:
+#             name = student.get('name', 'Student')
+#             email_address = student.get('email')
+
+#             if not email_address:
+#                 continue
+
+#             subject = "🎂 Happy Birthday from T4TEQ!"
+#             from_email = settings.DEFAULT_FROM_EMAIL
+#             to_email = email_address
+
+#             html_content = f"""
+#                 <div style="font-family:Arial; padding:20px;">
+#                     <h2 style="color:#007BFF;">Happy Birthday, {name}!</h2>
+#                     <p>Wishing you lots of joy today! 🎉</p>
+#                     <img src="cid:poster" style="max-width:400px;" />
+#                     <p style="margin-top:20px;">- T4TEQ Team</p>
+#                 </div>
+#             """
+
+#             email = EmailMessage(subject, html_content, from_email, [to_email])
+#             email.content_subtype = 'html'
+
+#             # Add image
+#             image_path = os.path.join(settings.BASE_DIR, 'static', 'assests', 'image.jpeg')
+#             if os.path.exists(image_path):
+#                 with open(image_path, 'rb') as img:
+#                     mime_img = MIMEImage(img.read())
+#                     mime_img.add_header('Content-ID', '<poster>')
+#                     mime_img.add_header('Content-Disposition', 'inline', filename='image.jpeg')
+#                     email.attach(mime_img)
+
+#             print(f"✅ Email sent to: {email_address}")
+#             email.send()
+
+#         return JsonResponse({'message': 'Birthday emails sent'}, status=200)
+
+#     except Exception as e:
+#         print("💥 Email send error:", str(e))
+#         return JsonResponse({'error': 'Failed to send emails'}, status=500)
 
 
 
