@@ -134,7 +134,7 @@ def send_birthday_emails(request):
 
         # 🎯 Case 1: Empty body — Auto mode (for GitHub Actions)
         if not body_unicode:
-            print("🌀 Auto mode triggered: No request body found.")
+            print("🌀 Auto mode triggered: No request body found.",flush=True)
             today = date.today().strftime('%Y-%m-%d')
             students = list(table.find({"dob": today}, {"_id": 0}))
         else:
@@ -177,15 +177,16 @@ def send_birthday_emails(request):
                     mime_img.add_header('Content-Disposition', 'inline', filename='image.jpeg')
                     email.attach(mime_img)
 
-            print(f"✅ Email sent to: {email_address}")
+            print(f"✅ Email sent to: {email_address}",flush=True)
             email.send()
 
         return JsonResponse({'message': 'Birthday wishes sent successfully'}, status=200)
 
     except json.JSONDecodeError:
+        print("❌ Invalid JSON format", flush=True)
         return JsonResponse({'error': 'Invalid JSON format'}, status=400)
     except Exception as e:
-        print("💥 Email error:", str(e))
+        print("💥 Email error:", str(e),flush=True)
         return JsonResponse({'error': 'Failed to send birthday emails'}, status=500)
 
 
